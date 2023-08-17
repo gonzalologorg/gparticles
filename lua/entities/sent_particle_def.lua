@@ -44,9 +44,13 @@ function ENT:SetupDataTables()
     self:NetworkVar("Bool", 2, "IsOn")
     self:NetworkVar("Entity", 0, "Main")
     self:NetworkVar("Entity", 1, "Player")
+    self:NetworkVar("Int", 2, "AttachmentSelected")
     self:SetIsOn(true)
     self:NetworkVarNotify("ParticleName", self.OnParticleNameChanged)
     self:NetworkVarNotify("ControlPoints", self.OnControlPointsChanged)
+    self:NetworkVarNotify("AttachmentSelected", function(s, name, old, new)
+        self:OnParticleNameChanged("", "", self:GetParticleName())
+    end)
 end
 
 if SERVER then
@@ -85,7 +89,7 @@ function ENT:OnParticleNameChanged(name, old, new)
             self.Particle:StopEmissionAndDestroyImmediately()
         end
 
-        self.Particle = CreateParticleSystem(self, new, PATTACH_ABSORIGIN_FOLLOW, 0)
+        self.Particle = CreateParticleSystem(self, new, PATTACH_CUSTOMORIGIN, self:GetAttachmentSelected())
         self.Particle:SetShouldDraw(false)
         self.DidCreate = true
     end
@@ -114,6 +118,13 @@ function ENT:OnControlPointsChanged(name, old, new)
 end
 
 function ENT:Think()
+    if IsValid(self:GetParent()) then
+        local att = self:GetParent():GetAttachment(self:GetAttachmentSelected())
+        if att then
+            self:SetPos(att.Pos)
+            self:SetAngles(att.Ang)
+        end
+    end
 end
 
 function ENT:OnRemove()
@@ -144,9 +155,35 @@ local allowed = {
     gmod_tool = true
 }
 
+local beam = Material("trails/laser")
+local forwardColor = Color(255, 0, 0)
+local imgs = {}
+
+for k = 0, 9 do
+    imgs[k] = Material("sprites/key_" .. k)
+end
+function ENT:DrawGizmo(isDev)
+    if not isDev then return end
+    render.SetMaterial(beam)
+    local r, f, u = self:GetRight(), self:GetForward(), self:GetUp()
+    local a, b = self:GetPos(), self:GetPos() + f * 24
+    render.DrawBeam(a, b, 8, 0, 1, forwardColor)
+    render.DrawBeam(b, b + r * 8 - f * 8, 8, 0, 1, forwardColor)
+    render.DrawBeam(b, b - r * 8 - f * 8, 8, 0, 1, forwardColor)
+
+    render.DrawBeam(b, b + u * 8 - f * 8, 8, 0, 1, forwardColor)
+    render.DrawBeam(b, b - u * 8 - f * 8, 8, 0, 1, forwardColor)
+
+    if self:GetCP() > 9 then return end
+
+    render.SetMaterial(imgs[self:GetCP()])
+    render.DrawSprite(self:GetPos() + Vector(0, 0, 12), 8, 8, color_white)
+end
+
 function ENT:DrawTranslucent()
     local wep = LocalPlayer():GetActiveWeapon()
-    if not self:GetAutoKill() and IsValid(wep) and allowed[wep:GetClass()] then
+    local isDev = not self:GetAutoKill() and IsValid(wep) and allowed[wep:GetClass()]
+    if isDev then
         render.SuppressEngineLighting(true)
         render.SetBlend(.5)
         self:DrawModel()
@@ -158,14 +195,29 @@ function ENT:DrawTranslucent()
         local main = self:GetMain()
         if not IsValid(main) then return end
         if main.Particle and main.Particle:IsValid() then
+            main.Particle:SetControlPointEntity(self:GetCP(), self)
+            main.Particle:SetControlPointOrientation(self:GetCP(), self:GetAngles())
             main.Particle:SetControlPoint(self:GetCP(), self:GetPos())
         end
+
+        self:DrawGizmo(isDev)
 
         return
     end
 
     if self.Particle and self.Particle:IsValid() then
         if not self:GetIsOn() then return end
+        self.Particle:SetControlPointOrientation(0, self:GetAngles())
+        if IsValid(self:GetParent()) then
+            local att = self:GetParent():GetAttachment(self:GetAttachmentSelected())
+            if att then
+                local ang = att.Ang
+                self.Particle:SetControlPointOrientation(0, ang)
+                self.Particle:SetControlPoint(0, att.Pos)
+            end
+        else
+            self.Particle:SetControlPoint(0, self:GetPos())
+        end
         self.Particle:Render()
     elseif self:GetParticleName() ~= "" then
         if self:GetAutoKill() and self.DidCreate and not self.Notified then
@@ -178,6 +230,8 @@ function ENT:DrawTranslucent()
         if self:GetAutoKill() then return end
         self:OnParticleNameChanged("", "", self:GetParticleName())
     end
+
+    self:DrawGizmo(isDev)
 end
 
 net.Receive(
