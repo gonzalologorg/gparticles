@@ -26,7 +26,6 @@ function PANEL:Setup(name, part)
 
     self.Zoom = savedZooms[self.partName] or 100
     self.Particle:SetShouldDraw(false)
-    print(self.Particle:GetHighestControlPoint())
 end
 
 PANEL.WasValid = false
