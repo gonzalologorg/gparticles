@@ -2,6 +2,8 @@ local PANEL = {}
 PANEL.Zoom = 100
 DEFINE_BASECLASS( "ContentIcon")
 
+local savedZooms = util.JSONToTable(file.Read("gparticles_zoom.txt", "DATA") or "{}")
+
 function PANEL:Init()
     self:SetPaintBackground( false )
 	self:SetSize( 128, 128 )
@@ -12,13 +14,19 @@ function PANEL:Setup(name, part)
     self.partName = name
     self:SetName(self.partName)
 
+    self.Owner = ClientsideModel("models/hunter/blocks/cube025x025x025.mdl")
+    if not IsValid(self.Owner) then return end
+
     PrecacheParticleSystem(self.partName)
-    self.Particle = CreateParticleSystemNoEntity(self.partName, Vector(0, 0, 0), Angle(0, 0, 0))
+    self.Particle = CreateParticleSystem(self.Owner, self.partName, PATTACH_ABSORIGIN_FOLLOW, 0, Vector(0, 0, 0))
     if not self.Particle then
         self:SetName("-Invalid particle system-")
         return
     end
+
+    self.Zoom = savedZooms[self.partName] or 100
     self.Particle:SetShouldDraw(false)
+    print(self.Particle:GetHighestControlPoint())
 end
 
 PANEL.WasValid = false
@@ -36,10 +44,11 @@ function PANEL:Paint(w, h)
         local ang = origin:Angle()
         ang:RotateAroundAxis(ang:Up(), 90)
         cam.Start3D(origin, -ang, self.Zoom, x + 8, y + 8, w - 16, h - 16, 0, 1024)
+        self.Owner:DrawModel()
         self.Particle:Render()
         cam.End3D()
-    elseif not self.Particle:IsValid() and self.WasValid then
-        self.Particle = CreateParticleSystemNoEntity(self.partName, Vector(0, 0, 0), Angle(0, 0, 0))
+    elseif not self.Particle:IsValid() and self.WasValid and IsValid(self.Owner) then
+        self.Particle = CreateParticleSystem(self.Owner, self.partName, PATTACH_ABSORIGIN_FOLLOW, 1, Vector(0, 0, 0))
         self.Particle:SetShouldDraw(false)
     end
 end
@@ -53,9 +62,13 @@ function PANEL:OnMousePressed(m)
         end):SetIcon("icon16/fire.png")
         menu:AddOption("+Zoom", function()
             self.Zoom = self.Zoom - self.Zoom / 4
+            savedZooms[self.partName] = self.Zoom
+            file.Write("gparticles_zoom.txt", util.TableToJSON(savedZooms))
         end):SetIcon("icon16/add.png")
         menu:AddOption("-Zoom", function()
             self.Zoom = self.Zoom + self.Zoom / 4
+            savedZooms[self.partName] = self.Zoom
+            file.Write("gparticles_zoom.txt", util.TableToJSON(savedZooms))
         end):SetIcon("icon16/delete.png")
         menu:AddOption("Copy name", function()
             SetClipboardText(self.partName)
@@ -74,6 +87,7 @@ function PANEL:OnMousePressed(m)
 end
 
 function PANEL:OnRemove()
+    SafeRemoveEntity(self.Owner)
     if self.Particle and self.Particle:IsValid() then
         self.Particle:StopEmissionAndDestroyImmediately()
     end
