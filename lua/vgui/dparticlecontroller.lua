@@ -66,7 +66,6 @@ function PANEL:CallPopulateHook(HookName)
 end
 
 local function rebuildCache(name, item, cb)
-	game.AddParticles("particles/" .. name)
 	knownDictionaries[name] = knownDictionaries[name] or {}
 	knownDictionaries[name].State = 3
 	knownDictionaries[name].Particles = util.GetParticleList("particles/" .. name)
@@ -143,6 +142,7 @@ function PANEL:CreateItem(k, v)
 		end
 		-- If we've already populated it - forget it.
 		if s.PropPanel then return end
+		game.AddParticles("particles/" .. v)
 		-- Create the container panel
 		s.PropPanel = vgui.Create("ContentContainer", pnlContent)
 		s.PropPanel:SetVisible(false)
