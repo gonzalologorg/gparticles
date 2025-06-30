@@ -90,6 +90,14 @@ function ENT:OnParticleNameChanged(name, old, new)
         end
 
         self.Particle = CreateParticleSystem(self, new, PATTACH_CUSTOMORIGIN, self:GetAttachmentSelected())
+        if not self.Particle or not self.Particle:IsValid() then
+            Derma_Message(
+                "Error",
+                "Failed to create particle system with name: " .. new,
+                "OK"
+            )
+            return
+        end
         self.Particle:SetShouldDraw(false)
         self.DidCreate = true
     end
