@@ -98,7 +98,7 @@ local function spawnItems(name, panel)
 		})
 	end
 end
-
+local partprecached = {}
 function PANEL:CreateItem(k, v)
 	local icon = (knownDictionaries[v] and knownDictionaries[v].State) or 0
 	local item = self.ContentNavBar.Tree:AddNode(v, "icon16/" .. states[icon] .. ".png")
@@ -142,7 +142,11 @@ function PANEL:CreateItem(k, v)
 		end
 		-- If we've already populated it - forget it.
 		if s.PropPanel then return end
-		game.AddParticles("particles/" .. v)
+
+		if not partprecached[v] then
+			game.AddParticles("particles/" .. v)
+			partprecached[v] = true
+		end
 		-- Create the container panel
 		s.PropPanel = vgui.Create("ContentContainer", pnlContent)
 		s.PropPanel:SetVisible(false)
