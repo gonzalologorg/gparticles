@@ -16,12 +16,19 @@ local function ProcessFile( data, behind )
     data = data:Read(data:Size())
     local strings = string.Explode("\x03\x00", data)
     local definitions = {}
+    local antiCrisis = 100000
     for slot, line in pairs(strings) do
         local cursor = 1
         while (line[cursor] != "\x00" and cursor < #line) do
             cursor = cursor + 1
+            antiCrisis = antiCrisis - 1
+            if antiCrisis <= 0 then break end
         end
-        local result = string.match(string.sub(line, 1, cursor), "(%g+)")
+
+        if cursor == 1 then continue end
+        --print(line, cursor, line[cursor + 3])
+        if (line[cursor + 18] != "\x00") then continue end
+        local result = string.match(string.sub(line, 1, cursor), "([%g ]+)")
         if not result or trash[result] or #result < 4 then continue end
         table.insert(definitions, result)
     end
