@@ -213,3 +213,31 @@ spawnmenu.AddCreationTab("Particles", function()
 	local PViewer = vgui.Create("DParticleViewer")
 	return PViewer
 end, "icon16/fire.png", 96, "See all your particles")
+
+concommand.Add("particles_whereis", function(ply, cmd, args)
+	local part = args[1]
+	if not part then return end
+
+	local done = {}
+
+	local cache = util.GetParticleCacheList()
+	for k, v in pairs(cache) do
+		if string.find(string.lower(k), string.lower(part)) then
+			print("particles/" .. k)
+			return
+		end
+		done[k] = true
+	end
+
+	local files = file.Find("particles/*.pcf", "GAME")
+	for k, v in pairs(files) do
+		if done[v] then continue end
+		local parts = util.GetParticleList("particles/" .. v)
+		for _, name in pairs(parts) do
+			if string.find(string.lower(name), string.lower(part)) then
+				print("particles/" .. v)
+				return
+			end
+		end
+	end
+end)
