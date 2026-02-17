@@ -220,7 +220,7 @@ concommand.Add("particles_whereis", function(ply, cmd, args)
 
 	local done = {}
 
-	local cache = util.GetParticleCacheList()
+	local cache = util.GetParticleCache()
 	for k, v in pairs(cache) do
 		if string.find(string.lower(k), string.lower(part)) then
 			print("particles/" .. k)
