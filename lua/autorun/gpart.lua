@@ -53,3 +53,7 @@ end
 function util.GetParticleList(name)
     return GetList(name)
 end
+
+function util.GetParticleCache()
+    return Cache
+end
